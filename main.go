@@ -23,7 +23,7 @@ var posts []Posts
 //Get All Posts
 func getPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	enableCors(&w)
+	enableCors(&w, "GET")
 
 	json.NewEncoder(w).Encode(posts)
 }
@@ -45,6 +45,7 @@ func getPost(w http.ResponseWriter, r *http.Request) {
 
 //Create Post
 func createPost(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w, "POST")
 	w.Header().Set("Content-Type", "application/json")
 	var post Posts
 	_ = json.NewDecoder(r.Body).Decode(&post)
@@ -75,7 +76,8 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 
 //Delete Post
 func deletePost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json, text/plain")
+	enableCors(&w, "GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH")
 	params := mux.Vars(r)
 	for i, item := range posts {
 		if item.ID == params["id"] {
@@ -87,11 +89,10 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 }
 
 //Allow CORS
-func enableCors(w *http.ResponseWriter) {
+func enableCors(w *http.ResponseWriter, methods string) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Methods", "GET")
-	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
+	(*w).Header().Set("Access-Control-Allow-Methods", methods)
+	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type, x-requested-with, Access-Control-Allow-Headers, Access-Control-Allow-Methods, Access-Control-Allow-Origin, Date, Content-Length")
 }
 
 func main() {
