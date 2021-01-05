@@ -1,3 +1,11 @@
+// To be entirely honest, I’d recommend against fiddling with CORS at all.
+//If your goal is to make back-end requests from a front-end (presumably running on different ports), I’d consider using something like webpack’s proxy server,
+//which will proxy requests that make it to the front-end server to a back-end.
+// Adding all this extra logic can go wrong if you forget to remove something once you actually make it to production.
+
+//It’s pretty neat. It supports TLS with a self-signed cert as well.
+//It essentially allows you to change absolutely nothing in your code; you just have to insert a few extra lines into your webpack config and everything works fine.
+
 package main
 
 import (
@@ -23,7 +31,6 @@ var posts []Posts
 //Get All Posts
 func getPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	enableCors(&w, "GET")
 
 	json.NewEncoder(w).Encode(posts)
 }
@@ -45,7 +52,6 @@ func getPost(w http.ResponseWriter, r *http.Request) {
 
 //Create Post
 func createPost(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w, "POST")
 	w.Header().Set("Content-Type", "application/json")
 	var post Posts
 	_ = json.NewDecoder(r.Body).Decode(&post)
@@ -60,12 +66,10 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	for i, item := range posts {
 		if item.ID == params["id"] {
-			//Slices out the old book
 			posts = append(posts[:i], posts[i+1:]...)
-			//Adds the new post
 			var post Posts
 			_ = json.NewDecoder(r.Body).Decode(&post)
-			post.ID = strconv.Itoa(rand.Intn(1000)) //Mock ID
+			post.ID = params["id"]
 			posts = append(posts, post)
 			json.NewEncoder(w).Encode(post)
 
@@ -76,8 +80,6 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 
 //Delete Post
 func deletePost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json, text/plain")
-	enableCors(&w, "GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH")
 	params := mux.Vars(r)
 	for i, item := range posts {
 		if item.ID == params["id"] {
@@ -88,22 +90,15 @@ func deletePost(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(posts)
 }
 
-//Allow CORS
-func enableCors(w *http.ResponseWriter, methods string) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
-	(*w).Header().Set("Access-Control-Allow-Methods", methods)
-	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type, x-requested-with, Access-Control-Allow-Headers, Access-Control-Allow-Methods, Access-Control-Allow-Origin, Date, Content-Length")
-}
-
 func main() {
 	//Init router
 	router := mux.NewRouter()
 
 	//Router handlers/endpoints
 	router.HandleFunc("/api/posts", getPosts).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/posts", createPost).Methods("POST")
+	router.HandleFunc("/api/posts", createPost).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api/posts/{id}", getPost).Methods("GET", "OPTIONS")
-	router.HandleFunc("/api/posts/{id}", updatePost).Methods("PUT")
-	router.HandleFunc("/api/posts/{id}", deletePost).Methods("DELETE")
+	router.HandleFunc("/api/posts/{id}", updatePost).Methods("PUT", "OPTIONS")
+	router.HandleFunc("/api/posts/{id}", deletePost).Methods("DELETE", "OPTIONS")
 	log.Fatal(http.ListenAndServe(":5000", router))
 }
